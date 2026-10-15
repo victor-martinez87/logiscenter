@@ -1,0 +1,21 @@
+{
+    "name": "victor/module-immutable-quote",
+    "description": "Magento 2 module that locks quotes against commercial mutation while allowing operational system updates.",
+    "version": "1.0.0",
+    "type": "magento2-module",
+    "license": "proprietary",
+    "require": {
+        "php": ">=8.4 <8.6",
+        "magento/framework": ">=103.0",
+        "magento/module-quote": ">=101.2",
+        "magento/module-checkout": ">=100.4"
+    },
+    "autoload": {
+        "files": [
+            "registration.php"
+        ],
+        "psr-4": {
+            "Victor\\ImmutableQuote\\": ""
+        }
+    }
+}
