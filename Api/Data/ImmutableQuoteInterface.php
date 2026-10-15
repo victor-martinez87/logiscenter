@@ -19,7 +19,11 @@ interface ImmutableQuoteInterface
 
     public function getEntityId(): ?int;
 
-    public function setEntityId(int|string|null $entityId): self;
+    /**
+     * @param int|string|null $entityId
+     * @return $this
+     */
+    public function setEntityId($entityId);
 
     public function getQuoteId(): ?int;
 

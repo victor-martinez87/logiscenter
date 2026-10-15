@@ -10,23 +10,35 @@ use Victor\ImmutableQuote\Model\ResourceModel\ImmutableQuote\CollectionFactory;
 
 class QuoteMutationGuard
 {
+    public const CONTEXT_COMMERCIAL = 'commercial';
+    public const CONTEXT_OPERATIONAL = 'operational';
+
     public function __construct(
         private readonly CollectionFactory $collectionFactory,
         private readonly EventManagerInterface $eventManager,
         private readonly LoggerInterface $logger
     ) {}
 
-    public function validateMutation(int $quoteId, string $context = 'commercial'): void
+    public function isQuoteLocked(int $quoteId): bool
     {
-        if ($context === 'operational' || $quoteId <= 0) {
-            return;
+        if ($quoteId <= 0) {
+            return false;
         }
 
         $collection = $this->collectionFactory->create();
         $collection->addFieldToFilter('quote_id', $quoteId);
         $collection->addFieldToFilter('is_immutable', 1);
 
-        if ($collection->getSize() > 0) {
+        return (bool) $collection->getSize();
+    }
+
+    public function validateMutation(int $quoteId, string $context = self::CONTEXT_COMMERCIAL): void
+    {
+        if ($context === self::CONTEXT_OPERATIONAL || $quoteId <= 0) {
+            return;
+        }
+
+        if ($this->isQuoteLocked($quoteId)) {
             $this->logger->warning(sprintf(
                 'Quote commercial mutation blocked: quote_id=%d, context=%s',
                 $quoteId,

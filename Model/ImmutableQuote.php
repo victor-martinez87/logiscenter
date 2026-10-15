@@ -15,7 +15,7 @@ class ImmutableQuote extends AbstractModel implements ImmutableQuoteInterface
         $this->_init(ImmutableQuoteResource::class);
     }
 
-    public function getEntityId()
+    public function getEntityId(): ?int
     {
         $entityId = $this->getData(self::ENTITY_ID);
 
