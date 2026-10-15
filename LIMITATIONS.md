@@ -30,3 +30,16 @@ The module enforces a **technical** lock: commercial persistence of an already l
 Those rules belong in a signed product specification. Until they exist, this module will not invent tax, MSI, or shipping side effects around the lock flag.
 
 Treat production rollout as a controlled integration: enable the module, migrate lock producers onto `QuoteLockManagementInterface`, retire the seven legacy plugins, and confirm each checkout and back-office path against the client’s own acceptance criteria.
+
+## 3. Frontend Presentation & UI/UX Scope
+
+In alignment with the challenge guidelines prioritizing core domain architecture over presentation (80% backend / 20% frontend), this release deliberately focuses on data consistency, state transitions, domain events, and REST APIs.
+
+The following presentation components are intentionally left out of this package to remain theme-agnostic (Luma vs. Hyvä):
+- Customer account quote management grid/detail views (`view/frontend/templates`).
+- Knockout.js / Alpine.js UI components disabling cart/minicart mutation buttons in real-time.
+- Custom `customer-data` section invalidation for the customer session cache.
+
+### Recommended Implementation for Production UI:
+1. **Private Content Section:** Expose an `immutable_quote` section in Magento's `sections.xml` to avoid caching issues with Varnish/FPC.
+2. **Hyvä/Luma Compatibility:** Build UI indicators (badges, disabled inputs) as lightweight UI components reacting to the quote's immutability state retrieved via the REST endpoint.
