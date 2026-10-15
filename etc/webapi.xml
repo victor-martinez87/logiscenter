@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Webapi:etc/webapi.xsd">
+    <route url="/V1/quotes/immutable/:quoteId/lock" method="POST">
+        <service class="Victor\ImmutableQuote\Api\QuoteLockManagementInterface" method="lock"/>
+        <resources>
+            <resource ref="Victor_ImmutableQuote::manage"/>
+        </resources>
+    </route>
+    <route url="/V1/quotes/immutable/:quoteId/unlock" method="POST">
+        <service class="Victor\ImmutableQuote\Api\QuoteLockManagementInterface" method="unlock"/>
+        <resources>
+            <resource ref="Victor_ImmutableQuote::manage"/>
+        </resources>
+    </route>
+    <route url="/V1/quotes/immutable/:id" method="GET">
+        <service class="Victor\ImmutableQuote\Api\ImmutableQuoteRepositoryInterface" method="getById"/>
+        <resources>
+            <resource ref="Victor_ImmutableQuote::view"/>
+        </resources>
+    </route>
+    <route url="/V1/quotes/immutable" method="GET">
+        <service class="Victor\ImmutableQuote\Api\ImmutableQuoteRepositoryInterface" method="getList"/>
+        <resources>
+            <resource ref="Victor_ImmutableQuote::view"/>
+        </resources>
+    </route>
+</routes>

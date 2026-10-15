@@ -49,6 +49,39 @@ Lock and unlock are application-service operations on `QuoteLockManagementInterf
 
 This split keeps the interceptor thin (Open/Closed at the Magento seam) and the rule testable in isolation (PHPUnit against a collection factory mock, no Magento application bootstrap).
 
+### 2.3 Full repository with SearchCriteria
+
+`ImmutableQuoteRepositoryInterface` is the persistence façade for `quote_immutable`. `Model/ImmutableQuoteRepository` uses:
+
+- `ImmutableQuoteFactory` + resource model for identity load/save/delete
+- Collection factory + `CollectionProcessorInterface` so Magento `SearchCriteria` (filters, sort, paging) is applied without custom SQL
+- `SearchResultsInterfaceFactory` for `getList()` payloads consumed by REST `GET /V1/quotes/immutable`
+
+Missing rows raise `NoSuchEntityException`. Persistence failures wrap the original exception in `CouldNotSaveException` / `CouldNotDeleteException` (exception chaining) so WebAPI can map 404 vs 400.
+
+### 2.4 Event-driven architecture (EDA)
+
+Domain state changes are broadcast through Magento’s `Event\ManagerInterface`. Integrations (ERP, OMS, audit, payment) subscribe in `etc/events.xml` without new quote-save plugins.
+
+| Event | When | Payload |
+| --- | --- | --- |
+| `victor_quote_locked` | After a successful `lock()` | `quote_id`, `reason`, `entity` |
+| `victor_quote_unlocked` | After a successful `unlock()` of an existing row | `quote_id`, `entity` |
+| `victor_quote_mutation_blocked` | Before `QuoteImmutableException` on illegal commercial write | `quote_id`, `context` |
+
+Operational mutations never dispatch `victor_quote_mutation_blocked`.
+
+### 2.5 Structured PSR-3 audit logging
+
+`QuoteMutationGuard` injects `Psr\Log\LoggerInterface`. A blocked commercial mutation writes a **warning** with a stable message template and a structured context array (JSON-serializable for Magento handlers / ELK / CloudWatch):
+
+```
+Quote commercial mutation blocked: quote_id=%s, context=%s
+{ "quote_id": 42, "context": "commercial" }
+```
+
+Message + context together support grep and structured queries. Logging happens before the exception so the audit line is not lost if the exception is swallowed upstream.
+
 ## 3. Stack & Compatibility
 
 Developed and intended for this local container matrix:
@@ -71,3 +104,5 @@ The module uses Magento 2.4 service contracts, DI (`etc/di.xml`), and resource m
 - Lock state stored as a related, constrained entity rather than an unrelated boolean.
 - Commercial vs operational mutations decided in one domain service, covered by unit tests.
 - New lock reasons or contexts extend `QuoteMutationGuard` without adding more `CartRepositoryInterface` plugins.
+- SearchCriteria repository + REST/ACL for operations and support tooling.
+- Domain events and PSR-3 warnings for ERP/observability without coupling them to checkout save.

@@ -1,72 +1,92 @@
 <?php
-
 declare(strict_types=1);
 
 namespace Victor\ImmutableQuote\Model;
 
+use DateTimeImmutable;
+use Magento\Framework\Event\ManagerInterface as EventManagerInterface;
+use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Quote\Api\CartRepositoryInterface;
 use Victor\ImmutableQuote\Api\Data\ImmutableQuoteInterface;
 use Victor\ImmutableQuote\Api\QuoteLockManagementInterface;
+use Victor\ImmutableQuote\Model\ImmutableQuoteFactory;
 use Victor\ImmutableQuote\Model\ResourceModel\ImmutableQuote as ImmutableQuoteResource;
+use Victor\ImmutableQuote\Model\ResourceModel\ImmutableQuote\CollectionFactory;
 
 class QuoteLockManagement implements QuoteLockManagementInterface
 {
     public function __construct(
+        private readonly CartRepositoryInterface $cartRepository,
         private readonly ImmutableQuoteFactory $immutableQuoteFactory,
         private readonly ImmutableQuoteResource $immutableQuoteResource,
-        private readonly CartRepositoryInterface $cartRepository
-    ) {
-    }
+        private readonly CollectionFactory $collectionFactory,
+        private readonly EventManagerInterface $eventManager
+    ) {}
 
-    public function lock(int $cartId, ?string $reason = null): bool
+    public function lock(int $quoteId, ?string $reason = null): bool
     {
-        $this->cartRepository->get($cartId);
+        $quote = $this->cartRepository->get($quoteId);
+        if (!$quote->getId()) {
+            throw new NoSuchEntityException(__('Quote with ID %1 does not exist.', $quoteId));
+        }
 
-        $immutableQuote = $this->loadOrCreate($cartId);
-        $immutableQuote->setQuoteId($cartId);
-        $immutableQuote->setIsImmutable(true);
-        $immutableQuote->setLockedAt((new \DateTimeImmutable('now'))->format('Y-m-d H:i:s'));
-        $immutableQuote->setLockedReason($reason);
-        $this->immutableQuoteResource->save($immutableQuote);
+        $entity = $this->getOrCreateEntity($quoteId);
+        $entity->setIsImmutable(true);
+        $entity->setLockedAt((new DateTimeImmutable())->format('Y-m-d H:i:s'));
+        $entity->setLockedReason($reason ?? 'Locked via QuoteLockManagement');
+
+        $this->immutableQuoteResource->save($entity);
+
+        $this->eventManager->dispatch('victor_quote_locked', [
+            'quote_id' => $quoteId,
+            'reason' => $reason,
+            'entity' => $entity
+        ]);
 
         return true;
     }
 
-    public function unlock(int $cartId): bool
+    public function unlock(int $quoteId): bool
     {
-        $immutableQuote = $this->loadOrCreate($cartId);
-        if ($immutableQuote->getEntityId() === null) {
-            return true;
+        $entity = $this->getOrCreateEntity($quoteId);
+        if (!$entity->getId() || !$entity->getIsImmutable()) {
+            return false;
         }
 
-        $immutableQuote->setIsImmutable(false);
-        $immutableQuote->setLockedReason(null);
-        $this->immutableQuoteResource->save($immutableQuote);
+        $entity->setIsImmutable(false);
+        $entity->setLockedReason(null);
+        $entity->setLockedAt(null);
+
+        $this->immutableQuoteResource->save($entity);
+
+        $this->eventManager->dispatch('victor_quote_unlocked', [
+            'quote_id' => $quoteId,
+            'entity' => $entity
+        ]);
 
         return true;
     }
 
-    public function isLocked(int $cartId): bool
+    public function isLocked(int $quoteId): bool
     {
-        $immutableQuote = $this->loadOrCreate($cartId);
+        $collection = $this->collectionFactory->create();
+        $collection->addFieldToFilter('quote_id', $quoteId);
+        $collection->addFieldToFilter('is_immutable', 1);
 
-        return $immutableQuote->getEntityId() !== null && $immutableQuote->getIsImmutable();
+        return (bool) $collection->getSize();
     }
 
-    private function loadOrCreate(int $cartId): ImmutableQuote
+    private function getOrCreateEntity(int $quoteId): ImmutableQuoteInterface
     {
-        /** @var ImmutableQuote $immutableQuote */
-        $immutableQuote = $this->immutableQuoteFactory->create();
-        $this->immutableQuoteResource->load(
-            $immutableQuote,
-            $cartId,
-            ImmutableQuoteInterface::QUOTE_ID
-        );
+        $collection = $this->collectionFactory->create();
+        $collection->addFieldToFilter('quote_id', $quoteId);
+        $entity = $collection->getFirstItem();
 
-        if ($immutableQuote->getEntityId() === null) {
-            $immutableQuote->setQuoteId($cartId);
+        if (!$entity->getId()) {
+            $entity = $this->immutableQuoteFactory->create();
+            $entity->setQuoteId($quoteId);
         }
 
-        return $immutableQuote;
+        return $entity;
     }
 }

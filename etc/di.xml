@@ -5,8 +5,12 @@
                 type="Victor\ImmutableQuote\Model\ImmutableQuote"/>
     <preference for="Victor\ImmutableQuote\Api\QuoteLockManagementInterface"
                 type="Victor\ImmutableQuote\Model\QuoteLockManagement"/>
+    <preference for="Victor\ImmutableQuote\Api\ImmutableQuoteRepositoryInterface"
+                type="Victor\ImmutableQuote\Model\ImmutableQuoteRepository"/>
+
     <type name="Magento\Quote\Api\CartRepositoryInterface">
-        <plugin name="victor_immutable_quote_prevent_save"
-                type="Victor\ImmutableQuote\Plugin\PreventCartModificationPlugin"/>
+        <plugin name="victor_prevent_cart_modification"
+                type="Victor\ImmutableQuote\Plugin\PreventCartModificationPlugin"
+                sortOrder="10"/>
     </type>
 </config>

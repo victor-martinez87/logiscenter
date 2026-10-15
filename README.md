@@ -60,8 +60,8 @@ class SubmitQuoteToErp
 
 Related API:
 
-- `unlock(int $cartId): bool` — clears the commercial lock.
-- `isLocked(int $cartId): bool` — reads persisted lock state.
+- `unlock(int $quoteId): bool` — clears the commercial lock.
+- `isLocked(int $quoteId): bool` — reads persisted lock state.
 
 Operational writers that must still persist system fields on a locked quote should call `QuoteMutationGuard::validateMutation($quoteId, 'operational')` (or skip the commercial interceptor path). Customer-facing cart saves remain `commercial` and will raise `QuoteImmutableException`.
 
@@ -74,5 +74,6 @@ vendor/bin/phpunit -c dev/tests/unit/phpunit.xml.dist \
 
 ## Further reading
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) — ADR, interceptor consolidation, schema model.
+- [ARCHITECTURE.md](ARCHITECTURE.md) — ADR, interceptor consolidation, schema, EDA, repository, PSR-3.
+- [API_DOCUMENTATION.md](API_DOCUMENTATION.md) — REST routes, samples, HTTP codes, ACL.
 - [LIMITATIONS.md](LIMITATIONS.md) — integration scope and deferred business rules.
